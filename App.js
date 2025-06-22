@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View, SafeAreaView } from 'react-native';
-import { Card, Icon } from 'react-native-elements';
+import { Card } from 'react-native-elements';
 
 export default function App() {
   const stepsProgress = 3000 / 10000; // 30% progress
@@ -82,6 +82,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+    paddingBottom: 60, // Make room for the bottom nav bar
   },
   header: {
     paddingVertical: 20,
@@ -142,8 +143,14 @@ const styles = StyleSheet.create({
   navContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
+    alignItems: 'center',
     paddingVertical: 10,
     backgroundColor: '#d3d3d3',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 60,
   },
   navItem: {
     alignItems: 'center',
