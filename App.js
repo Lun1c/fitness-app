@@ -1,16 +1,27 @@
+import 'react-native-gesture-handler'; // Must be first import
+
 import React from 'react';
-import { StyleSheet, Text, View, SafeAreaView } from 'react-native';
+import { Text, View, SafeAreaView, StyleSheet } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Card } from 'react-native-elements';
 
-export default function App() {
-  const stepsProgress = 3000 / 10000; // 30% progress
+const Tab = createBottomTabNavigator();
+
+function Header({ title }) {
+  return (
+    <View style={styles.header}>
+      <Text style={styles.headerText}>{title}</Text>
+    </View>
+  );
+}
+
+function HomeScreen() {
+  const stepsProgress = 3000 / 10000;
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Title */}
-      <View style={styles.header}>
-        <Text style={styles.headerText}>Title</Text>
-      </View>
+      <Header title="Home" />
 
       {/* Calories Section */}
       <Card containerStyle={styles.card}>
@@ -55,26 +66,47 @@ export default function App() {
           <Text style={styles.subValueText}>Last 90 Days...</Text>
         </View>
       </Card>
-
-      {/* Bottom Navigation */}
-      <View style={styles.navContainer}>
-        <View style={styles.navItem}>
-          <Text style={styles.navText}>Other</Text>
-        </View>
-        <View style={styles.navItem}>
-          <Text style={styles.navText}>Other</Text>
-        </View>
-        <View style={styles.navItem}>
-          <Text style={styles.navText}>Home</Text>
-        </View>
-        <View style={styles.navItem}>
-          <Text style={styles.navText}>Food</Text>
-        </View>
-        <View style={styles.navItem}>
-          <Text style={styles.navText}>Workouts</Text>
-        </View>
-      </View>
     </SafeAreaView>
+  );
+}
+
+function FoodScreen() {
+  return (
+    <SafeAreaView style={styles.container}>
+      <Header title="Food" />
+      <Text style={styles.screenContent}>Track your meals and nutrition.</Text>
+    </SafeAreaView>
+  );
+}
+
+function WorkoutsScreen() {
+  return (
+    <SafeAreaView style={styles.container}>
+      <Header title="Workouts" />
+      <Text style={styles.screenContent}>Track your workouts here.</Text>
+    </SafeAreaView>
+  );
+}
+
+function OtherScreen() {
+  return (
+    <SafeAreaView style={styles.container}>
+      <Header title="Other" />
+      <Text style={styles.screenContent}>Other tools and settings.</Text>
+    </SafeAreaView>
+  );
+}
+
+export default function App() {
+  return (
+    <NavigationContainer>
+      <Tab.Navigator screenOptions={{ headerShown: false }}>
+        <Tab.Screen name="Home" component={HomeScreen} />
+        <Tab.Screen name="Food" component={FoodScreen} />
+        <Tab.Screen name="Workouts" component={WorkoutsScreen} />
+        <Tab.Screen name="Other" component={OtherScreen} />
+      </Tab.Navigator>
+    </NavigationContainer>
   );
 }
 
@@ -82,7 +114,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
-    paddingBottom: 60, // Make room for the bottom nav bar
   },
   header: {
     paddingVertical: 20,
@@ -92,6 +123,12 @@ const styles = StyleSheet.create({
   headerText: {
     fontSize: 24,
     fontWeight: 'bold',
+  },
+  screenContent: {
+    textAlign: 'center',
+    marginTop: 20,
+    fontSize: 16,
+    color: '#555',
   },
   card: {
     margin: 10,
@@ -139,24 +176,5 @@ const styles = StyleSheet.create({
   progress: {
     height: '100%',
     backgroundColor: '#ff0000',
-  },
-  navContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingVertical: 10,
-    backgroundColor: '#d3d3d3',
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 60,
-  },
-  navItem: {
-    alignItems: 'center',
-  },
-  navText: {
-    fontSize: 14,
-    fontWeight: '600',
   },
 });
