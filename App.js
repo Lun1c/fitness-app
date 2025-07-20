@@ -102,18 +102,12 @@ function FoodScreen() {
     }
   };
 
-  if (hasPermission === null) {
-    return <Text>Requesting permissions...</Text>;
-  }
-
-  if (!hasPermission) {
-    return <Text>No access to camera or media library</Text>;
-  }
+  if (hasPermission === null) return <Text>Requesting permissions...</Text>;
+  if (!hasPermission) return <Text>No access to camera or media library</Text>;
 
   return (
     <SafeAreaView style={styles.container}>
       <Header title="Food" />
-
       {showCamera ? (
         <Camera
           style={styles.camera}
@@ -150,7 +144,7 @@ function WorkoutsScreen() {
   const [workouts, setWorkouts] = useState([]);
 
   const handleAddWorkout = () => {
-    if (!workoutName || !duration) return;
+    if (!workoutName.trim() || !duration.trim()) return;
 
     const newWorkout = {
       id: Date.now().toString(),
@@ -172,9 +166,10 @@ function WorkoutsScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1, padding: 20 }}
       >
+        <Text style={styles.sectionTitle}>➕ Add New Workout</Text>
         <TextInput
           style={styles.input}
-          placeholder="Workout Name"
+          placeholder="Workout Name (e.g. Running)"
           value={workoutName}
           onChangeText={setWorkoutName}
         />
@@ -187,26 +182,35 @@ function WorkoutsScreen() {
         />
         <TextInput
           style={[styles.input, { height: 80 }]}
-          placeholder="Notes"
+          placeholder="Notes (optional)"
           value={notes}
           onChangeText={setNotes}
           multiline
         />
-        <Button title="Add Workout" onPress={handleAddWorkout} />
+        <View style={styles.addButton}>
+          <Button title="Add Workout" onPress={handleAddWorkout} />
+        </View>
 
-        <Text style={styles.sectionTitle}>Logged Workouts:</Text>
-        <FlatList
-          data={workouts}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <View style={styles.workoutItem}>
-              <Text style={{ fontWeight: 'bold' }}>
-                {item.name} ({item.duration})
-              </Text>
-              {item.notes ? <Text style={{ color: '#555' }}>{item.notes}</Text> : null}
-            </View>
-          )}
-        />
+        <Text style={styles.sectionTitle}>📋 Logged Workouts</Text>
+        {workouts.length === 0 ? (
+          <Text style={styles.placeholderText}>No workouts logged yet.</Text>
+        ) : (
+          <FlatList
+            data={workouts}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={{ paddingBottom: 20 }}
+            renderItem={({ item }) => (
+              <View style={styles.workoutItem}>
+                <Text style={styles.workoutTitle}>
+                  {item.name} ({item.duration})
+                </Text>
+                {item.notes ? (
+                  <Text style={styles.workoutNotes}>{item.notes}</Text>
+                ) : null}
+              </View>
+            )}
+          />
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -330,15 +334,34 @@ const styles = StyleSheet.create({
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 10,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
     backgroundColor: '#f9f9f9',
+    fontSize: 16,
+  },
+  addButton: {
+    marginBottom: 20,
   },
   workoutItem: {
-    padding: 10,
-    marginVertical: 5,
-    backgroundColor: '#eee',
-    borderRadius: 8,
+    padding: 12,
+    marginVertical: 6,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 10,
+  },
+  workoutTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  workoutNotes: {
+    marginTop: 4,
+    color: '#555',
+    fontSize: 14,
+  },
+  placeholderText: {
+    textAlign: 'center',
+    fontStyle: 'italic',
+    color: '#888',
+    marginTop: 10,
   },
 });
