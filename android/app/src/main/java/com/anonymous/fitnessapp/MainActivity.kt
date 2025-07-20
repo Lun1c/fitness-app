@@ -1,4 +1,4 @@
-package com.fitnessapp
+package com.anonymous.fitnessapp
 
 import android.os.Build
 import android.os.Bundle
