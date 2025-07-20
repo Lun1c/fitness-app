@@ -1,5 +1,4 @@
 import 'react-native-gesture-handler';
-
 import React, { useState, useEffect } from 'react';
 import {
   Text,
@@ -10,6 +9,8 @@ import {
   Image,
   TextInput,
   FlatList,
+  Keyboard,
+  TouchableWithoutFeedback,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -121,10 +122,7 @@ function FoodScreen() {
         </Camera>
       ) : (
         <View style={styles.content}>
-          <Button
-            title="Take a Photo of Your Meal"
-            onPress={() => setShowCamera(true)}
-          />
+          <Button title="Take a Photo of Your Meal" onPress={() => setShowCamera(true)} />
           {photoUri && (
             <>
               <Text style={styles.photoLabel}>Last photo taken:</Text>
@@ -157,61 +155,64 @@ function WorkoutsScreen() {
     setWorkoutName('');
     setDuration('');
     setNotes('');
+    Keyboard.dismiss();
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <Header title="Workouts" />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1, padding: 20 }}
-      >
-        <Text style={styles.sectionTitle}>➕ Add New Workout</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Workout Name (e.g. Running)"
-          value={workoutName}
-          onChangeText={setWorkoutName}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Duration (e.g. 30 min)"
-          value={duration}
-          onChangeText={setDuration}
-          keyboardType="numeric"
-        />
-        <TextInput
-          style={[styles.input, { height: 80 }]}
-          placeholder="Notes (optional)"
-          value={notes}
-          onChangeText={setNotes}
-          multiline
-        />
-        <View style={styles.addButton}>
-          <Button title="Add Workout" onPress={handleAddWorkout} />
-        </View>
-
-        <Text style={styles.sectionTitle}>📋 Logged Workouts</Text>
-        {workouts.length === 0 ? (
-          <Text style={styles.placeholderText}>No workouts logged yet.</Text>
-        ) : (
-          <FlatList
-            data={workouts}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={{ paddingBottom: 20 }}
-            renderItem={({ item }) => (
-              <View style={styles.workoutItem}>
-                <Text style={styles.workoutTitle}>
-                  {item.name} ({item.duration})
-                </Text>
-                {item.notes ? (
-                  <Text style={styles.workoutNotes}>{item.notes}</Text>
-                ) : null}
-              </View>
-            )}
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1, padding: 20 }}
+        >
+          <Text style={styles.sectionTitle}>➕ Add New Workout</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Workout Name"
+            value={workoutName}
+            onChangeText={setWorkoutName}
           />
-        )}
-      </KeyboardAvoidingView>
+          <TextInput
+            style={styles.input}
+            placeholder="Duration (e.g. 30 mins)"
+            value={duration}
+            onChangeText={setDuration}
+            keyboardType="numeric"
+          />
+          <TextInput
+            style={[styles.input, { height: 80 }]}
+            placeholder="Notes (optional)"
+            value={notes}
+            onChangeText={setNotes}
+            multiline
+          />
+          <View style={styles.addButton}>
+            <Button title="Add Workout" onPress={handleAddWorkout} />
+          </View>
+
+          <Text style={styles.sectionTitle}>📋 Logged Workouts</Text>
+          {workouts.length === 0 ? (
+            <Text style={styles.placeholderText}>No workouts logged yet.</Text>
+          ) : (
+            <FlatList
+              data={workouts}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={{ paddingBottom: 20 }}
+              renderItem={({ item }) => (
+                <View style={styles.workoutItem}>
+                  <Text style={styles.workoutTitle}>
+                    {item.name} ({item.duration})
+                  </Text>
+                  {item.notes ? (
+                    <Text style={styles.workoutNotes}>{item.notes}</Text>
+                  ) : null}
+                </View>
+              )}
+            />
+          )}
+        </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
     </SafeAreaView>
   );
 }
@@ -266,7 +267,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    marginTop: 20,
     marginBottom: 10,
   },
   valueContainer: {
@@ -333,35 +333,33 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
-    backgroundColor: '#f9f9f9',
+    borderColor: '#aaa',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
     fontSize: 16,
   },
   addButton: {
     marginBottom: 20,
   },
-  workoutItem: {
-    padding: 12,
-    marginVertical: 6,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 10,
-  },
-  workoutTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  workoutNotes: {
-    marginTop: 4,
-    color: '#555',
-    fontSize: 14,
-  },
   placeholderText: {
     textAlign: 'center',
-    fontStyle: 'italic',
-    color: '#888',
+    color: '#777',
     marginTop: 10,
+  },
+  workoutItem: {
+    backgroundColor: '#f1f1f1',
+    padding: 12,
+    marginVertical: 6,
+    borderRadius: 8,
+  },
+  workoutTitle: {
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  workoutNotes: {
+    fontStyle: 'italic',
+    color: '#444',
+    marginTop: 4,
   },
 });
