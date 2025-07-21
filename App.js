@@ -14,6 +14,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Card } from 'react-native-elements';
@@ -109,26 +110,28 @@ function FoodScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <Header title="Food" />
-      {showCamera ? (
-        <Camera
-          style={styles.camera}
-          ref={(ref) => setCameraRef(ref)}
-          type={Camera.Constants.Type.back}
-        >
-          <View style={styles.cameraControls}>
-            <Button title="Snap" onPress={takePhoto} />
-            <Button title="Cancel" onPress={() => setShowCamera(false)} />
-          </View>
-        </Camera>
-      ) : (
-        <View style={styles.content}>
-          <Button title="Take a Photo of Your Meal" onPress={() => setShowCamera(true)} />
-          {photoUri && (
-            <>
-              <Text style={styles.photoLabel}>Last photo taken:</Text>
-              <Image source={{ uri: photoUri }} style={styles.imagePreview} />
-            </>
-          )}
+      <View style={styles.content}>
+        <Button title="Take a Photo of Your Meal" onPress={() => setShowCamera(true)} />
+        {photoUri && (
+          <>
+            <Text style={styles.photoLabel}>Last photo taken:</Text>
+            <Image source={{ uri: photoUri }} style={styles.imagePreview} />
+          </>
+        )}
+      </View>
+
+      {showCamera && (
+        <View style={styles.cameraOverlay}>
+          <Camera
+            style={styles.camera}
+            ref={(ref) => setCameraRef(ref)}
+            type={Camera.Constants.Type.back}
+          >
+            <View style={styles.cameraControls}>
+              <Button title="Snap" onPress={takePhoto} />
+              <Button title="Cancel" onPress={() => setShowCamera(false)} />
+            </View>
+          </Camera>
         </View>
       )}
     </SafeAreaView>
@@ -140,9 +143,44 @@ function WorkoutsScreen() {
   const [duration, setDuration] = useState('');
   const [notes, setNotes] = useState('');
   const [workouts, setWorkouts] = useState([]);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const loadWorkouts = async () => {
+      try {
+        const savedWorkouts = await AsyncStorage.getItem('workouts');
+        if (savedWorkouts) setWorkouts(JSON.parse(savedWorkouts));
+      } catch (e) {
+        console.error('Failed to load workouts', e);
+      }
+    };
+    loadWorkouts();
+  }, []);
+
+  useEffect(() => {
+    const saveWorkouts = async () => {
+      try {
+        await AsyncStorage.setItem('workouts', JSON.stringify(workouts));
+      } catch (e) {
+        console.error('Failed to save workouts', e);
+      }
+    };
+    saveWorkouts();
+  }, [workouts]);
 
   const handleAddWorkout = () => {
-    if (!workoutName.trim() || !duration.trim()) return;
+    if (!workoutName.trim() && !duration.trim()) {
+      setError('Please enter both workout name and duration.');
+      return;
+    }
+    if (!workoutName.trim()) {
+      setError('Please enter a workout name.');
+      return;
+    }
+    if (!duration.trim()) {
+      setError('Please enter a duration.');
+      return;
+    }
 
     const newWorkout = {
       id: Date.now().toString(),
@@ -155,7 +193,13 @@ function WorkoutsScreen() {
     setWorkoutName('');
     setDuration('');
     setNotes('');
+    setError('');
     Keyboard.dismiss();
+  };
+
+  const handleClearWorkouts = () => {
+    setWorkouts([]);
+    setError('');
   };
 
   return (
@@ -167,15 +211,18 @@ function WorkoutsScreen() {
           style={{ flex: 1, padding: 20 }}
         >
           <Text style={styles.sectionTitle}>➕ Add New Workout</Text>
+
           <TextInput
             style={styles.input}
             placeholder="Workout Name"
+            placeholderTextColor="#aaa"
             value={workoutName}
             onChangeText={setWorkoutName}
           />
           <TextInput
             style={styles.input}
-            placeholder="Duration (e.g. 30 mins)"
+            placeholder="Duration"
+            placeholderTextColor="#aaa"
             value={duration}
             onChangeText={setDuration}
             keyboardType="numeric"
@@ -183,15 +230,20 @@ function WorkoutsScreen() {
           <TextInput
             style={[styles.input, { height: 80 }]}
             placeholder="Notes (optional)"
+            placeholderTextColor="#aaa"
             value={notes}
             onChangeText={setNotes}
             multiline
           />
+
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+
           <View style={styles.addButton}>
             <Button title="Add Workout" onPress={handleAddWorkout} />
           </View>
 
           <Text style={styles.sectionTitle}>📋 Logged Workouts</Text>
+
           {workouts.length === 0 ? (
             <Text style={styles.placeholderText}>No workouts logged yet.</Text>
           ) : (
@@ -210,6 +262,12 @@ function WorkoutsScreen() {
                 </View>
               )}
             />
+          )}
+
+          {workouts.length > 0 && (
+            <View style={{ marginTop: 10 }}>
+              <Button title="Clear Workouts" color="#cc0000" onPress={handleClearWorkouts} />
+            </View>
           )}
         </KeyboardAvoidingView>
       </TouchableWithoutFeedback>
@@ -306,15 +364,26 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#ff0000',
   },
+  cameraOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    right: 0,
+    zIndex: 999,
+    backgroundColor: '#000',
+  },
   camera: {
     flex: 1,
-    justifyContent: 'flex-end',
   },
   cameraControls: {
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    paddingBottom: 20,
+    position: 'absolute',
+    bottom: 20,
+    width: '100%',
     flexDirection: 'row',
     justifyContent: 'space-around',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingVertical: 10,
   },
   content: {
     flex: 1,
@@ -361,5 +430,10 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     color: '#444',
     marginTop: 4,
+  },
+  error: {
+    color: 'red',
+    marginBottom: 10,
+    fontSize: 14,
   },
 });
