@@ -101,9 +101,7 @@ function HomeScreen() {
               <Text style={styles.value}>{steps}</Text>
               <Text style={styles.label}>Goal: {stepGoal} steps</Text>
               <View style={styles.progressBar}>
-                <View
-                  style={[styles.progress, { width: `${stepsProgress * 100}%` }]}
-                />
+                <View style={[styles.progress, { width: `${stepsProgress * 100}%` }]} />
               </View>
             </>
           ) : (
@@ -153,10 +151,7 @@ function FoodScreen() {
     <SafeAreaView style={styles.container}>
       <Header title="Food" />
       <View style={styles.content}>
-        <TouchableOpacity
-          onPress={() => setShowCamera(true)}
-          style={styles.takePhotoButton}
-        >
+        <TouchableOpacity onPress={() => setShowCamera(true)} style={styles.takePhotoButton}>
           <Text style={styles.takePhotoText}>📸 Take a Photo of Your Meal</Text>
         </TouchableOpacity>
 
@@ -173,7 +168,7 @@ function FoodScreen() {
           <Camera
             style={styles.camera}
             ref={(ref) => setCameraRef(ref)}
-            type={Camera.Constants.Type.back}
+            type={Camera?.Constants?.Type?.back ?? 0}
           >
             <View style={styles.cameraControls}>
               <TouchableOpacity onPress={takePhoto} style={styles.snapButton}>
@@ -200,8 +195,8 @@ function WorkoutsScreen() {
   useEffect(() => {
     const loadWorkouts = async () => {
       try {
-        const savedWorkouts = await AsyncStorage.getItem('workouts');
-        if (savedWorkouts) setWorkouts(JSON.parse(savedWorkouts));
+        const saved = await AsyncStorage.getItem('workouts');
+        if (saved) setWorkouts(JSON.parse(saved));
       } catch (e) {
         console.error('Failed to load workouts', e);
       }
@@ -221,16 +216,8 @@ function WorkoutsScreen() {
   }, [workouts]);
 
   const handleAddWorkout = () => {
-    if (!workoutName.trim() && !duration.trim()) {
+    if (!workoutName.trim() || !duration.trim()) {
       setError('Please enter both workout name and duration.');
-      return;
-    }
-    if (!workoutName.trim()) {
-      setError('Please enter a workout name.');
-      return;
-    }
-    if (!duration.trim()) {
-      setError('Please enter a duration.');
       return;
     }
 
@@ -258,10 +245,7 @@ function WorkoutsScreen() {
     <SafeAreaView style={styles.container}>
       <Header title="Workouts" />
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={{ flex: 1, padding: 20 }}
-        >
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, padding: 20 }}>
           <Text style={styles.sectionTitle}>➕ Add New Workout</Text>
           <TextInput
             style={styles.input}
@@ -304,12 +288,8 @@ function WorkoutsScreen() {
               contentContainerStyle={{ paddingBottom: 20 }}
               renderItem={({ item }) => (
                 <View style={styles.workoutItem}>
-                  <Text style={styles.workoutTitle}>
-                    {item.name} ({item.duration})
-                  </Text>
-                  {item.notes ? (
-                    <Text style={styles.workoutNotes}>{item.notes}</Text>
-                  ) : null}
+                  <Text style={styles.workoutTitle}>{item.name} ({item.duration})</Text>
+                  {item.notes ? <Text style={styles.workoutNotes}>{item.notes}</Text> : null}
                 </View>
               )}
             />
@@ -357,7 +337,7 @@ const styles = StyleSheet.create({
   header: {
     paddingVertical: 20,
     alignItems: 'center',
-    backgroundColor: '#e0e0e0',
+    backgroundColor: '#ADD8E6',
   },
   headerText: {
     fontSize: 24,
@@ -372,7 +352,7 @@ const styles = StyleSheet.create({
   card: {
     margin: 10,
     borderRadius: 10,
-    backgroundColor: '#d3d3d3',
+    backgroundColor: '#E0F7FF',
   },
   sectionTitle: {
     fontSize: 20,
@@ -408,7 +388,7 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     height: 20,
-    backgroundColor: '#fff',
+    backgroundColor: '#C0E8FF',
     borderRadius: 10,
     overflow: 'hidden',
     width: '100%',
@@ -487,7 +467,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   workoutItem: {
-    backgroundColor: '#f1f1f1',
+    backgroundColor: '#DFF6FF',
     padding: 12,
     marginVertical: 6,
     borderRadius: 8,
