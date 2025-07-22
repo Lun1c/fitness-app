@@ -5,14 +5,14 @@ import {
   View,
   SafeAreaView,
   StyleSheet,
-  Button,
-  Image,
   TextInput,
   FlatList,
   Keyboard,
   TouchableWithoutFeedback,
   KeyboardAvoidingView,
   Platform,
+  Image,
+  TouchableOpacity,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer } from '@react-navigation/native';
@@ -20,6 +20,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Card } from 'react-native-elements';
 import { Camera } from 'expo-camera';
 import * as MediaLibrary from 'expo-media-library';
+import { Pedometer } from 'expo-sensors';
 
 const Tab = createBottomTabNavigator();
 
@@ -32,11 +33,44 @@ function Header({ title }) {
 }
 
 function HomeScreen() {
-  const stepsProgress = 3000 / 10000;
+  const [steps, setSteps] = useState(0);
+  const [pedometerAvailable, setPedometerAvailable] = useState('checking');
+  const stepGoal = 10000;
+
+  useEffect(() => {
+    let subscription;
+
+    const subscribe = async () => {
+      const isAvailable = await Pedometer.isAvailableAsync();
+      setPedometerAvailable(isAvailable ? 'available' : 'not available');
+
+      if (!isAvailable) return;
+
+      subscription = Pedometer.watchStepCount((result) => {
+        setSteps(result.steps);
+      });
+
+      const end = new Date();
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+
+      const result = await Pedometer.getStepCountAsync(start, end);
+      setSteps(result.steps);
+    };
+
+    subscribe();
+
+    return () => {
+      if (subscription) subscription.remove();
+    };
+  }, []);
+
+  const stepsProgress = Math.min(steps / stepGoal, 1);
 
   return (
     <SafeAreaView style={styles.container}>
       <Header title="Home" />
+
       <Card containerStyle={styles.card}>
         <Text style={styles.sectionTitle}>Calories</Text>
         <View style={styles.valueContainer}>
@@ -62,11 +96,19 @@ function HomeScreen() {
       <Card containerStyle={styles.card}>
         <Text style={styles.sectionTitle}>Steps</Text>
         <View style={styles.valueContainer}>
-          <Text style={styles.value}>3,000</Text>
-          <Text style={styles.label}>Goal: 10,000 steps</Text>
-        </View>
-        <View style={styles.progressBar}>
-          <View style={[styles.progress, { width: `${stepsProgress * 100}%` }]} />
+          {pedometerAvailable === 'available' ? (
+            <>
+              <Text style={styles.value}>{steps}</Text>
+              <Text style={styles.label}>Goal: {stepGoal} steps</Text>
+              <View style={styles.progressBar}>
+                <View
+                  style={[styles.progress, { width: `${stepsProgress * 100}%` }]}
+                />
+              </View>
+            </>
+          ) : (
+            <Text style={styles.label}>Pedometer not available</Text>
+          )}
         </View>
       </Card>
 
@@ -111,7 +153,13 @@ function FoodScreen() {
     <SafeAreaView style={styles.container}>
       <Header title="Food" />
       <View style={styles.content}>
-        <Button title="Take a Photo of Your Meal" onPress={() => setShowCamera(true)} />
+        <TouchableOpacity
+          onPress={() => setShowCamera(true)}
+          style={styles.takePhotoButton}
+        >
+          <Text style={styles.takePhotoText}>📸 Take a Photo of Your Meal</Text>
+        </TouchableOpacity>
+
         {photoUri && (
           <>
             <Text style={styles.photoLabel}>Last photo taken:</Text>
@@ -128,8 +176,12 @@ function FoodScreen() {
             type={Camera.Constants.Type.back}
           >
             <View style={styles.cameraControls}>
-              <Button title="Snap" onPress={takePhoto} />
-              <Button title="Cancel" onPress={() => setShowCamera(false)} />
+              <TouchableOpacity onPress={takePhoto} style={styles.snapButton}>
+                <Text style={styles.snapText}>Snap</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setShowCamera(false)} style={styles.cancelButton}>
+                <Text style={styles.snapText}>Cancel</Text>
+              </TouchableOpacity>
             </View>
           </Camera>
         </View>
@@ -211,7 +263,6 @@ function WorkoutsScreen() {
           style={{ flex: 1, padding: 20 }}
         >
           <Text style={styles.sectionTitle}>➕ Add New Workout</Text>
-
           <TextInput
             style={styles.input}
             placeholder="Workout Name"
@@ -235,15 +286,15 @@ function WorkoutsScreen() {
             onChangeText={setNotes}
             multiline
           />
-
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
           <View style={styles.addButton}>
-            <Button title="Add Workout" onPress={handleAddWorkout} />
+            <TouchableOpacity onPress={handleAddWorkout} style={styles.snapButton}>
+              <Text style={styles.snapText}>Add Workout</Text>
+            </TouchableOpacity>
           </View>
 
           <Text style={styles.sectionTitle}>📋 Logged Workouts</Text>
-
           {workouts.length === 0 ? (
             <Text style={styles.placeholderText}>No workouts logged yet.</Text>
           ) : (
@@ -263,10 +314,11 @@ function WorkoutsScreen() {
               )}
             />
           )}
-
           {workouts.length > 0 && (
             <View style={{ marginTop: 10 }}>
-              <Button title="Clear Workouts" color="#cc0000" onPress={handleClearWorkouts} />
+              <TouchableOpacity onPress={handleClearWorkouts} style={[styles.cancelButton, { alignItems: 'center' }]}>
+                <Text style={styles.snapText}>Clear Workouts</Text>
+              </TouchableOpacity>
             </View>
           )}
         </KeyboardAvoidingView>
@@ -359,31 +411,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 10,
     overflow: 'hidden',
+    width: '100%',
   },
   progress: {
     height: '100%',
     backgroundColor: '#ff0000',
-  },
-  cameraOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    bottom: 0,
-    right: 0,
-    zIndex: 999,
-    backgroundColor: '#000',
-  },
-  camera: {
-    flex: 1,
-  },
-  cameraControls: {
-    position: 'absolute',
-    bottom: 20,
-    width: '100%',
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    paddingVertical: 10,
   },
   content: {
     flex: 1,
@@ -399,6 +431,44 @@ const styles = StyleSheet.create({
   photoLabel: {
     fontSize: 16,
     marginTop: 20,
+  },
+  takePhotoButton: {
+    backgroundColor: '#007AFF',
+    padding: 12,
+    borderRadius: 10,
+  },
+  takePhotoText: {
+    color: 'white',
+    fontSize: 16,
+  },
+  cameraOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#000',
+    zIndex: 999,
+  },
+  camera: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  cameraControls: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 15,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  snapButton: {
+    backgroundColor: '#00cc00',
+    padding: 10,
+    borderRadius: 10,
+  },
+  cancelButton: {
+    backgroundColor: '#cc0000',
+    padding: 10,
+    borderRadius: 10,
+  },
+  snapText: {
+    color: 'white',
+    fontSize: 16,
   },
   input: {
     borderWidth: 1,
