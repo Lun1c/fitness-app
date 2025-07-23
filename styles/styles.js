@@ -36,6 +36,13 @@ const styles = StyleSheet.create({
     color: '#111',
   },
 
+  // Section Titles
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+
   // Cards
   card: {
     margin: 10,
@@ -46,13 +53,6 @@ const styles = StyleSheet.create({
   },
   cardDark: {
     backgroundColor: '#1E2A38',
-  },
-
-  // Section Titles
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 10,
   },
 
   // Values
@@ -100,34 +100,32 @@ const styles = StyleSheet.create({
     backgroundColor: '#ff0000',
   },
 
-  // Content / Images
+  // Content Layout
   content: {
     flex: 1,
     alignItems: 'center',
     marginTop: 30,
   },
-  imagePreview: {
-    width: 250,
-    height: 250,
-    marginTop: 20,
-    borderRadius: 10,
-  },
-  photoLabel: {
+
+  // Inputs
+  input: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
     fontSize: 16,
-    marginTop: 20,
+    width: '90%',
+  },
+  inputLight: {
+    borderColor: '#aaa',
+    color: '#000',
+  },
+  inputDark: {
+    borderColor: '#333',
+    color: '#fff',
   },
 
-  // Buttons
-  takePhotoButton: {
-    backgroundColor: '#007AFF',
-    padding: 12,
-    borderRadius: 10,
-  },
-  takePhotoText: {
-    color: 'white',
-    fontSize: 16,
-  },
-
+  // Camera
   cameraOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#000',
@@ -157,22 +155,40 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
   },
-
-  // Inputs
-  input: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 10,
-    fontSize: 16,
+  cameraLoading: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000',
   },
-  inputLight: {
-    borderColor: '#aaa',
-    color: '#000',
-  },
-  inputDark: {
-    borderColor: '#333',
+  cameraLoadingText: {
     color: '#fff',
+    fontSize: 18,
+  },
+
+  // Image Preview
+  photoLabel: {
+    fontSize: 16,
+    marginTop: 20,
+  },
+  imagePreview: {
+    width: 250,
+    height: 250,
+    marginTop: 20,
+    borderRadius: 10,
+  },
+
+  // Take Photo Button
+  takePhotoButton: {
+    backgroundColor: '#007AFF',
+    padding: 12,
+    borderRadius: 10,
+    marginVertical: 10,
+  },
+  takePhotoText: {
+    color: 'white',
+    fontSize: 16,
+    textAlign: 'center',
   },
 
   // Workouts
@@ -195,6 +211,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 4,
   },
+
+  // Misc
   placeholderText: {
     marginTop: 10,
     fontSize: 16,
