@@ -1,180 +1,141 @@
-import React, { useState, useEffect } from 'react';
-import { SafeAreaView, View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import React, { useState, useRef, useCallback } from 'react';
+import {
+  SafeAreaView,
+  View,
+  Text,
+  TouchableOpacity,
+  Image,
+  StyleSheet,
+} from 'react-native';
 import { Camera } from 'expo-camera';
 import * as MediaLibrary from 'expo-media-library';
+import { useFocusEffect } from '@react-navigation/native';
+import Header from '../components/Header';
+import styles from '../styles/styles';
 
 export default function FoodScreen({ darkMode }) {
   const [hasCameraPermission, setHasCameraPermission] = useState(null);
-  const [hasMediaPermission, setHasMediaPermission] = useState(null);
-  const [cameraRef, setCameraRef] = useState(null);
-  const [showCamera, setShowCamera] = useState(false);
-  const [photoUri, setPhotoUri] = useState(null);
-  const [cameraReady, setCameraReady] = useState(false);
+  const [cameraVisible, setCameraVisible] = useState(false);
+  const [photo, setPhoto] = useState(null);
+  const [cameraType, setCameraType] = useState(null); // back or front
+  const cameraRef = useRef(null);
 
-  useEffect(() => {
-    (async () => {
-      const { status: cameraStatus } = await Camera.requestCameraPermissionsAsync();
-      const { status: mediaStatus } = await MediaLibrary.requestPermissionsAsync();
-      setHasCameraPermission(cameraStatus === 'granted');
-      setHasMediaPermission(mediaStatus === 'granted');
-    })();
-  }, []);
+  // Request permissions on tab focus
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      (async () => {
+        const cameraStatus = await Camera.requestCameraPermissionsAsync();
+        const mediaStatus = await MediaLibrary.requestPermissionsAsync();
+
+        if (isActive) {
+          const granted =
+            cameraStatus.status === 'granted' &&
+            mediaStatus.status === 'granted';
+          setHasCameraPermission(granted);
+        }
+      })();
+
+      return () => {
+        isActive = false;
+      };
+    }, [])
+  );
+
+  const openCamera = async () => {
+    // Ensure Camera.Constants is defined before using it
+    if (!Camera?.Constants?.Type?.back) {
+      alert('Camera module not loaded yet. Please try again.');
+      return;
+    }
+
+    setCameraType(Camera.Constants.Type.back);
+    setCameraVisible(true);
+    setPhoto(null);
+  };
 
   const takePhoto = async () => {
-    if (cameraRef && cameraReady) {
-      try {
-        const photo = await cameraRef.takePictureAsync();
-        setPhotoUri(photo.uri);
-        await MediaLibrary.saveToLibraryAsync(photo.uri);
-        setShowCamera(false);
-      } catch (e) {
-        console.warn('Error taking photo:', e);
-      }
+    if (cameraRef.current) {
+      const data = await cameraRef.current.takePictureAsync();
+      setPhoto(data.uri);
+      await MediaLibrary.saveToLibraryAsync(data.uri);
+      setCameraVisible(false);
     }
   };
 
-  if (hasCameraPermission === null || hasMediaPermission === null) {
+  if (hasCameraPermission === null) {
     return (
-      <SafeAreaView style={styles.centered}>
-        <Text>Requesting permissions...</Text>
-      </SafeAreaView>
+      <View style={styles.container}>
+        <Text style={{ padding: 20 }}>Requesting camera permissions...</Text>
+      </View>
     );
   }
 
-  if (!hasCameraPermission || !hasMediaPermission) {
+  if (hasCameraPermission === false) {
     return (
-      <SafeAreaView style={styles.centered}>
-        <Text>No access to camera or media library</Text>
-      </SafeAreaView>
+      <View style={styles.container}>
+        <Text style={{ padding: 20 }}>No access to camera</Text>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, darkMode ? styles.containerDark : styles.containerLight]}>
-      {!showCamera && (
-        <View style={styles.content}>
-          <TouchableOpacity
-            style={styles.takePhotoButton}
-            onPress={() => setShowCamera(true)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.takePhotoText}>📸 Take a Photo of Your Meal</Text>
+    <SafeAreaView
+      style={[
+        styles.container,
+        darkMode ? styles.containerDark : styles.containerLight,
+      ]}
+    >
+      <Header title="Food" darkMode={darkMode} />
+      <View style={styles.content}>
+        <Text style={darkMode ? styles.textLight : styles.textDark}>
+          Tap below to open the camera and log your food.
+        </Text>
+
+        {!cameraVisible && (
+          <TouchableOpacity style={customStyles.button} onPress={openCamera}>
+            <Text style={customStyles.buttonText}>Open Camera</Text>
           </TouchableOpacity>
+        )}
 
-          {photoUri && (
-            <>
-              <Text style={[styles.photoLabel, darkMode ? styles.textLight : styles.textDark]}>
-                Last photo taken:
-              </Text>
-              <Image source={{ uri: photoUri }} style={styles.imagePreview} />
-            </>
-          )}
-        </View>
-      )}
-
-      {showCamera && (
-        <View style={styles.cameraOverlay}>
-          {Camera?.Constants?.Type?.back !== undefined ? (
+        {cameraVisible && cameraType && (
+          <>
             <Camera
-              style={styles.camera}
-              ref={(ref) => setCameraRef(ref)}
-              type={Camera.Constants.Type.back}
-              onCameraReady={() => setCameraReady(true)}
-            >
-              <View style={styles.cameraControls}>
-                <TouchableOpacity style={styles.snapButton} onPress={takePhoto}>
-                  <Text style={styles.snapText}>Snap</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={() => setShowCamera(false)}
-                >
-                  <Text style={styles.snapText}>Cancel</Text>
-                </TouchableOpacity>
-              </View>
-            </Camera>
-          ) : (
-            <View style={styles.centered}>
-              <Text style={{ color: 'white' }}>Camera not available</Text>
-            </View>
-          )}
-        </View>
-      )}
+              style={{ width: '100%', height: 300, marginVertical: 10 }}
+              type={cameraType}
+              ref={cameraRef}
+            />
+            <TouchableOpacity style={customStyles.button} onPress={takePhoto}>
+              <Text style={customStyles.buttonText}>Take Photo</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {photo && (
+          <Image source={{ uri: photo }} style={customStyles.preview} />
+        )}
+      </View>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  containerLight: { backgroundColor: '#fff' },
-  containerDark: { backgroundColor: '#121212' },
-  textLight: { color: '#eee' },
-  textDark: { color: '#111' },
-
-  content: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-
-  takePhotoButton: {
+const customStyles = StyleSheet.create({
+  button: {
     backgroundColor: '#007AFF',
-    padding: 15,
-    borderRadius: 10,
-    marginVertical: 20,
-  },
-  takePhotoText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-
-  photoLabel: {
-    fontSize: 16,
-    marginTop: 20,
-  },
-  imagePreview: {
-    width: 250,
-    height: 250,
-    borderRadius: 10,
-    marginTop: 10,
-  },
-
-  cameraOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#000',
-    zIndex: 1000,
-  },
-  camera: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  cameraControls: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 15,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-  },
-  snapButton: {
-    backgroundColor: '#00cc00',
-    padding: 15,
-    borderRadius: 10,
-  },
-  cancelButton: {
-    backgroundColor: '#cc0000',
-    padding: 15,
-    borderRadius: 10,
-  },
-  snapText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
+    padding: 12,
+    borderRadius: 8,
     alignItems: 'center',
+    marginVertical: 10,
+  },
+  buttonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  preview: {
+    width: '100%',
+    height: 200,
+    marginTop: 10,
+    borderRadius: 10,
   },
 });
