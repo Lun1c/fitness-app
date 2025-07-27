@@ -9,11 +9,15 @@ import {
   ScrollView,
   Animated,
   Dimensions,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Camera } from 'expo-camera';
 import * as MediaLibrary from 'expo-media-library';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 
@@ -25,6 +29,10 @@ export default function FoodScreen({ darkMode = false }) {
   const [cameraType, setCameraType] = useState(Camera.Constants?.Type?.back || 'back');
   const [isReady, setIsReady] = useState(false);
   const [photos, setPhotos] = useState([]);
+  const [meals, setMeals] = useState([]);
+  const [showTextInput, setShowTextInput] = useState(false);
+  const [mealText, setMealText] = useState('');
+  const [mealNotes, setMealNotes] = useState('');
   const cameraRef = useRef(null);
   const fadeAnim = useState(new Animated.Value(0))[0];
 
@@ -35,7 +43,31 @@ export default function FoodScreen({ darkMode = false }) {
       duration: 800,
       useNativeDriver: true,
     }).start();
+
+    // Load saved meals
+    loadMeals();
   }, []);
+
+  // Load meals from AsyncStorage
+  const loadMeals = async () => {
+    try {
+      const savedMeals = await AsyncStorage.getItem('meals');
+      if (savedMeals) {
+        setMeals(JSON.parse(savedMeals));
+      }
+    } catch (error) {
+      console.error('Error loading meals:', error);
+    }
+  };
+
+  // Save meals to AsyncStorage
+  const saveMeals = async (mealsToSave) => {
+    try {
+      await AsyncStorage.setItem('meals', JSON.stringify(mealsToSave));
+    } catch (error) {
+      console.error('Error saving meals:', error);
+    }
+  };
 
   // Request permissions when screen is focused
   useFocusEffect(
@@ -135,6 +167,7 @@ export default function FoodScreen({ darkMode = false }) {
           id: Date.now().toString(),
           uri: photoData.uri,
           timestamp: new Date().toLocaleString(),
+          type: 'photo',
         };
         
         setPhotos(prev => [newPhoto, ...prev]);
@@ -156,6 +189,31 @@ export default function FoodScreen({ darkMode = false }) {
     setIsReady(false);
   };
 
+  const addTextMeal = () => {
+    if (mealText.trim() === '') {
+      Alert.alert('Oops! 🤔', 'Please enter a meal description');
+      return;
+    }
+
+    const newMeal = {
+      id: Date.now().toString(),
+      text: mealText.trim(),
+      notes: mealNotes.trim(),
+      timestamp: new Date().toLocaleString(),
+      type: 'text',
+    };
+
+    const updatedMeals = [newMeal, ...meals];
+    setMeals(updatedMeals);
+    saveMeals(updatedMeals);
+    
+    setMealText('');
+    setMealNotes('');
+    setShowTextInput(false);
+    
+    Alert.alert('Success! 🍽️', 'Meal logged successfully!');
+  };
+
   const deletePhoto = (photoId) => {
     Alert.alert(
       'Delete Photo',
@@ -170,6 +228,25 @@ export default function FoodScreen({ darkMode = false }) {
             if (photo && photos.find(p => p.id === photoId)?.uri === photo) {
               setPhoto(null);
             }
+          },
+        },
+      ]
+    );
+  };
+
+  const deleteMeal = (mealId) => {
+    Alert.alert(
+      'Delete Meal',
+      'Are you sure you want to delete this meal?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            const updatedMeals = meals.filter(m => m.id !== mealId);
+            setMeals(updatedMeals);
+            saveMeals(updatedMeals);
           },
         },
       ]
@@ -227,95 +304,6 @@ export default function FoodScreen({ darkMode = false }) {
             Requesting camera and media permissions
           </Text>
         </View>
-      </SafeAreaView>
-    );
-  }
-
-  // No permission state
-  if (hasCameraPermission === false) {
-    return (
-      <SafeAreaView style={containerStyle}>
-        <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
-          <View style={{
-            paddingHorizontal: 20,
-            paddingTop: 20,
-            paddingBottom: 10,
-          }}>
-            <Text style={{
-              fontSize: 32,
-              fontWeight: '800',
-              color: darkMode ? '#FFFFFF' : '#1C1C1E',
-              marginBottom: 4,
-            }}>
-              Food Logger
-            </Text>
-            <Text style={{
-              fontSize: 16,
-              color: darkMode ? '#8E8E93' : '#6D6D70',
-              fontWeight: '500',
-            }}>
-              Capture your meals and snacks
-            </Text>
-          </View>
-
-          <View style={[cardStyle, {
-            alignItems: 'center',
-            marginTop: 50,
-          }]}>
-            <View style={{
-              backgroundColor: '#FF3B30',
-              borderRadius: 30,
-              width: 60,
-              height: 60,
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: 20,
-            }}>
-              <Ionicons name="camera-off" size={28} color="#FFFFFF" />
-            </View>
-            <Text style={{
-              fontSize: 20,
-              fontWeight: '700',
-              color: darkMode ? '#FFFFFF' : '#1C1C1E',
-              marginBottom: 12,
-              textAlign: 'center',
-            }}>
-              Camera Permission Required
-            </Text>
-            <Text style={{
-              fontSize: 16,
-              color: darkMode ? '#8E8E93' : '#6D6D70',
-              textAlign: 'center',
-              lineHeight: 24,
-              marginBottom: 24,
-            }}>
-              To log your food with photos, please enable camera access in your device settings.
-            </Text>
-            <TouchableOpacity
-              style={{
-                backgroundColor: '#007AFF',
-                borderRadius: 12,
-                paddingVertical: 14,
-                paddingHorizontal: 24,
-              }}
-              onPress={() => {
-                Alert.alert(
-                  'Enable Camera Access',
-                  'Go to Settings > Privacy & Security > Camera and enable access for this app.',
-                  [{ text: 'OK' }]
-                );
-              }}
-            >
-              <Text style={{
-                color: '#FFFFFF',
-                fontSize: 16,
-                fontWeight: '600',
-              }}>
-                Open Settings
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </Animated.View>
       </SafeAreaView>
     );
   }
@@ -420,151 +408,522 @@ export default function FoodScreen({ darkMode = false }) {
   // Main food screen
   return (
     <SafeAreaView style={containerStyle}>
-      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
-        <ScrollView showsVerticalScrollIndicator={false}>
-          {/* Header */}
-          <View style={{
-            paddingHorizontal: 20,
-            paddingTop: 20,
-            paddingBottom: 10,
-          }}>
-            <Text style={{
-              fontSize: 32,
-              fontWeight: '800',
-              color: darkMode ? '#FFFFFF' : '#1C1C1E',
-              marginBottom: 4,
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {/* Header */}
+            <View style={{
+              paddingHorizontal: 20,
+              paddingTop: 20,
+              paddingBottom: 10,
             }}>
-              Food Logger
-            </Text>
-            <Text style={{
-              fontSize: 16,
-              color: darkMode ? '#8E8E93' : '#6D6D70',
-              fontWeight: '500',
-            }}>
-              Capture your meals and snacks
-            </Text>
-          </View>
+              <Text style={{
+                fontSize: 32,
+                fontWeight: '800',
+                color: darkMode ? '#FFFFFF' : '#1C1C1E',
+                marginBottom: 4,
+              }}>
+                Food Logger
+              </Text>
+              <Text style={{
+                fontSize: 16,
+                color: darkMode ? '#8E8E93' : '#6D6D70',
+                fontWeight: '500',
+              }}>
+                Capture or log your meals and snacks
+              </Text>
+            </View>
 
-          {/* Camera Button */}
-          <TouchableOpacity
-            style={[cardStyle, {
-              alignItems: 'center',
-              backgroundColor: darkMode ? '#007AFF' : '#007AFF',
-            }]}
-            onPress={openCamera}
-          >
+            {/* Action Buttons */}
             <View style={{
               flexDirection: 'row',
-              alignItems: 'center',
+              paddingHorizontal: 16,
+              gap: 12,
+              marginBottom: 8,
             }}>
-              <Ionicons name="camera" size={24} color="#FFFFFF" style={{ marginRight: 12 }} />
-              <Text style={{
-                fontSize: 18,
-                fontWeight: '700',
-                color: '#FFFFFF',
-              }}>
-                Take Food Photo
-              </Text>
-            </View>
-          </TouchableOpacity>
-
-          {/* Photo Gallery */}
-          {photos.length > 0 && (
-            <View style={cardStyle}>
-              <Text style={{
-                fontSize: 20,
-                fontWeight: '700',
-                color: darkMode ? '#FFFFFF' : '#1C1C1E',
-                marginBottom: 16,
-              }}>
-                Your Food Photos ({photos.length})
-              </Text>
-              
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingRight: 20 }}
-              >
-                {photos.map((photoItem, index) => (
-                  <View key={photoItem.id} style={{ marginRight: 12 }}>
-                    <Image
-                      source={{ uri: photoItem.uri }}
-                      style={{
-                        width: 120,
-                        height: 120,
-                        borderRadius: 12,
-                        marginBottom: 8,
-                      }}
-                    />
+              {/* Camera Button */}
+              {hasCameraPermission && (
+                <TouchableOpacity
+                  style={[cardStyle, {
+                    flex: 1,
+                    margin: 0,
+                    alignItems: 'center',
+                    backgroundColor: darkMode ? '#007AFF' : '#007AFF',
+                    paddingVertical: 16,
+                  }]}
+                  onPress={openCamera}
+                >
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                  }}>
+                    <Ionicons name="camera" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
                     <Text style={{
-                      fontSize: 12,
-                      color: darkMode ? '#8E8E93' : '#6D6D70',
-                      textAlign: 'center',
+                      fontSize: 16,
+                      fontWeight: '700',
+                      color: '#FFFFFF',
+                    }}>
+                      Photo
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+
+              {/* Text Input Button */}
+              <TouchableOpacity
+                style={[cardStyle, {
+                  flex: 1,
+                  margin: 0,
+                  alignItems: 'center',
+                  backgroundColor: darkMode ? '#34C759' : '#34C759',
+                  paddingVertical: 16,
+                }]}
+                onPress={() => setShowTextInput(true)}
+              >
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                }}>
+                  <Ionicons name="create" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+                  <Text style={{
+                    fontSize: 16,
+                    fontWeight: '700',
+                    color: '#FFFFFF',
+                  }}>
+                    Text
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            {/* Text Input Form */}
+            {showTextInput && (
+              <View style={[cardStyle, { marginTop: 0 }]}>
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: 20,
+                }}>
+                  <Text style={{
+                    fontSize: 20,
+                    fontWeight: '700',
+                    color: darkMode ? '#FFFFFF' : '#1C1C1E',
+                  }}>
+                    Add Meal
+                  </Text>
+                  <TouchableOpacity onPress={() => {
+                    setShowTextInput(false);
+                    setMealText('');
+                    setMealNotes('');
+                  }}>
+                    <Ionicons 
+                      name="close-circle" 
+                      size={24} 
+                      color={darkMode ? '#8E8E93' : '#8E8E93'} 
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                <TextInput
+                  style={{
+                    backgroundColor: darkMode ? '#2C2C2E' : '#F2F2F7',
+                    borderRadius: 12,
+                    paddingVertical: 16,
+                    paddingHorizontal: 16,
+                    fontSize: 16,
+                    fontWeight: '500',
+                    color: darkMode ? '#FFFFFF' : '#1C1C1E',
+                    marginBottom: 12,
+                    minHeight: 50,
+                  }}
+                  placeholder="What did you eat? (e.g., Chicken salad with quinoa)"
+                  value={mealText}
+                  onChangeText={setMealText}
+                  placeholderTextColor={darkMode ? '#8E8E93' : '#6D6D70'}
+                  multiline
+                />
+
+                <TextInput
+                  style={{
+                    backgroundColor: darkMode ? '#2C2C2E' : '#F2F2F7',
+                    borderRadius: 12,
+                    paddingVertical: 16,
+                    paddingHorizontal: 16,
+                    fontSize: 14,
+                    fontWeight: '500',
+                    color: darkMode ? '#FFFFFF' : '#1C1C1E',
+                    marginBottom: 20,
+                    minHeight: 80,
+                  }}
+                  placeholder="Additional notes (optional - calories, portion size, etc.)"
+                  value={mealNotes}
+                  onChangeText={setMealNotes}
+                  placeholderTextColor={darkMode ? '#8E8E93' : '#6D6D70'}
+                  multiline
+                />
+
+                <View style={{
+                  flexDirection: 'row',
+                  gap: 12,
+                }}>
+                  <TouchableOpacity
+                    style={{
+                      flex: 1,
+                      backgroundColor: '#34C759',
+                      borderRadius: 12,
+                      paddingVertical: 16,
+                      alignItems: 'center',
+                    }}
+                    onPress={addTextMeal}
+                  >
+                    <Text style={{
+                      color: '#FFFFFF',
+                      fontSize: 16,
+                      fontWeight: '700',
+                    }}>
+                      Add Meal
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{
+                      flex: 1,
+                      backgroundColor: darkMode ? '#48484A' : '#8E8E93',
+                      borderRadius: 12,
+                      paddingVertical: 16,
+                      alignItems: 'center',
+                    }}
+                    onPress={() => {
+                      setShowTextInput(false);
+                      setMealText('');
+                      setMealNotes('');
+                    }}
+                  >
+                    <Text style={{
+                      color: '#FFFFFF',
+                      fontSize: 16,
+                      fontWeight: '700',
+                    }}>
+                      Cancel
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* Stats Card */}
+            {(photos.length > 0 || meals.length > 0) && (
+              <View style={cardStyle}>
+                <Text style={{
+                  fontSize: 18,
+                  fontWeight: '700',
+                  color: darkMode ? '#FFFFFF' : '#1C1C1E',
+                  marginBottom: 16,
+                  textAlign: 'center',
+                }}>
+                  Today's Food Log
+                </Text>
+                <View style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-around',
+                  alignItems: 'center',
+                }}>
+                  <View style={{ alignItems: 'center' }}>
+                    <View style={{
+                      backgroundColor: '#007AFF',
+                      borderRadius: 20,
+                      width: 40,
+                      height: 40,
+                      alignItems: 'center',
+                      justifyContent: 'center',
                       marginBottom: 8,
                     }}>
-                      {photoItem.timestamp}
+                      <Ionicons name="camera" size={20} color="#FFFFFF" />
+                    </View>
+                    <Text style={{
+                      fontSize: 20,
+                      fontWeight: '800',
+                      color: darkMode ? '#FFFFFF' : '#1C1C1E',
+                      marginBottom: 2,
+                    }}>
+                      {photos.length}
                     </Text>
-                    <TouchableOpacity
-                      style={{
-                        backgroundColor: '#FF3B30',
-                        borderRadius: 8,
-                        paddingVertical: 4,
-                        paddingHorizontal: 8,
-                        alignItems: 'center',
-                      }}
-                      onPress={() => deletePhoto(photoItem.id)}
-                    >
-                      <Ionicons name="trash" size={14} color="#FFFFFF" />
-                    </TouchableOpacity>
+                    <Text style={{
+                      fontSize: 12,
+                      fontWeight: '600',
+                      color: darkMode ? '#8E8E93' : '#6D6D70',
+                    }}>
+                      Photos
+                    </Text>
+                  </View>
+                  <View style={{ alignItems: 'center' }}>
+                    <View style={{
+                      backgroundColor: '#34C759',
+                      borderRadius: 20,
+                      width: 40,
+                      height: 40,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginBottom: 8,
+                    }}>
+                      <Ionicons name="create" size={20} color="#FFFFFF" />
+                    </View>
+                    <Text style={{
+                      fontSize: 20,
+                      fontWeight: '800',
+                      color: darkMode ? '#FFFFFF' : '#1C1C1E',
+                      marginBottom: 2,
+                    }}>
+                      {meals.length}
+                    </Text>
+                    <Text style={{
+                      fontSize: 12,
+                      fontWeight: '600',
+                      color: darkMode ? '#8E8E93' : '#6D6D70',
+                    }}>
+                      Text Logs
+                    </Text>
+                  </View>
+                  <View style={{ alignItems: 'center' }}>
+                    <View style={{
+                      backgroundColor: '#FF6B35',
+                      borderRadius: 20,
+                      width: 40,
+                      height: 40,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginBottom: 8,
+                    }}>
+                      <Ionicons name="restaurant" size={20} color="#FFFFFF" />
+                    </View>
+                    <Text style={{
+                      fontSize: 20,
+                      fontWeight: '800',
+                      color: darkMode ? '#FFFFFF' : '#1C1C1E',
+                      marginBottom: 2,
+                    }}>
+                      {photos.length + meals.length}
+                    </Text>
+                    <Text style={{
+                      fontSize: 12,
+                      fontWeight: '600',
+                      color: darkMode ? '#8E8E93' : '#6D6D70',
+                    }}>
+                      Total
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* Text Meals List */}
+            {meals.length > 0 && (
+              <View style={cardStyle}>
+                <Text style={{
+                  fontSize: 20,
+                  fontWeight: '700',
+                  color: darkMode ? '#FFFFFF' : '#1C1C1E',
+                  marginBottom: 16,
+                }}>
+                  Text Meal Logs ({meals.length})
+                </Text>
+                
+                {meals.map((meal) => (
+                  <View key={meal.id} style={{
+                    backgroundColor: darkMode ? '#2C2C2E' : '#F2F2F7',
+                    borderRadius: 12,
+                    padding: 16,
+                    marginBottom: 12,
+                  }}>
+                    <View style={{
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      marginBottom: 8,
+                    }}>
+                      <View style={{ flex: 1, marginRight: 12 }}>
+                        <Text style={{
+                          fontSize: 16,
+                          fontWeight: '700',
+                          color: darkMode ? '#FFFFFF' : '#1C1C1E',
+                          marginBottom: 4,
+                        }}>
+                          {meal.text}
+                        </Text>
+                        {meal.notes && (
+                          <Text style={{
+                            fontSize: 14,
+                            fontWeight: '500',
+                            color: darkMode ? '#8E8E93' : '#6D6D70',
+                            marginBottom: 8,
+                            lineHeight: 20,
+                          }}>
+                            {meal.notes}
+                          </Text>
+                        )}
+                        <Text style={{
+                          fontSize: 12,
+                          color: darkMode ? '#8E8E93' : '#6D6D70',
+                        }}>
+                          {meal.timestamp}
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        style={{
+                          backgroundColor: '#FF3B30',
+                          borderRadius: 8,
+                          paddingVertical: 6,
+                          paddingHorizontal: 8,
+                        }}
+                        onPress={() => deleteMeal(meal.id)}
+                      >
+                        <Ionicons name="trash" size={14} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 ))}
-              </ScrollView>
-            </View>
-          )}
-
-          {/* Empty State */}
-          {photos.length === 0 && (
-            <View style={[cardStyle, {
-              alignItems: 'center',
-              paddingVertical: 40,
-            }]}>
-              <View style={{
-                backgroundColor: darkMode ? '#2C2C2E' : '#F2F2F7',
-                borderRadius: 30,
-                width: 60,
-                height: 60,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 16,
-              }}>
-                <Ionicons 
-                  name="restaurant" 
-                  size={28} 
-                  color={darkMode ? '#8E8E93' : '#6D6D70'} 
-                />
               </View>
-              <Text style={{
-                fontSize: 18,
-                fontWeight: '700',
-                color: darkMode ? '#FFFFFF' : '#1C1C1E',
-                marginBottom: 8,
-                textAlign: 'center',
-              }}>
-                No food photos yet
-              </Text>
-              <Text style={{
-                fontSize: 14,
-                fontWeight: '500',
-                color: darkMode ? '#8E8E93' : '#6D6D70',
-                textAlign: 'center',
-                lineHeight: 20,
-              }}>
-                Start logging your meals by taking{'\n'}photos of your food!
-              </Text>
-            </View>
-          )}
-        </ScrollView>
-      </Animated.View>
+            )}
+
+            {/* Photo Gallery */}
+            {photos.length > 0 && (
+              <View style={cardStyle}>
+                <Text style={{
+                  fontSize: 20,
+                  fontWeight: '700',
+                  color: darkMode ? '#FFFFFF' : '#1C1C1E',
+                  marginBottom: 16,
+                }}>
+                  Your Food Photos ({photos.length})
+                </Text>
+                
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ paddingRight: 20 }}
+                >
+                  {photos.map((photoItem, index) => (
+                    <View key={photoItem.id} style={{ marginRight: 12 }}>
+                      <Image
+                        source={{ uri: photoItem.uri }}
+                        style={{
+                          width: 120,
+                          height: 120,
+                          borderRadius: 12,
+                          marginBottom: 8,
+                        }}
+                      />
+                      <Text style={{
+                        fontSize: 12,
+                        color: darkMode ? '#8E8E93' : '#6D6D70',
+                        textAlign: 'center',
+                        marginBottom: 8,
+                      }}>
+                        {photoItem.timestamp}
+                      </Text>
+                      <TouchableOpacity
+                        style={{
+                          backgroundColor: '#FF3B30',
+                          borderRadius: 8,
+                          paddingVertical: 4,
+                          paddingHorizontal: 8,
+                          alignItems: 'center',
+                        }}
+                        onPress={() => deletePhoto(photoItem.id)}
+                      >
+                        <Ionicons name="trash" size={14} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+
+            {/* Empty State */}
+            {photos.length === 0 && meals.length === 0 && (
+              <View style={[cardStyle, {
+                alignItems: 'center',
+                paddingVertical: 40,
+              }]}>
+                <View style={{
+                  backgroundColor: darkMode ? '#2C2C2E' : '#F2F2F7',
+                  borderRadius: 30,
+                  width: 60,
+                  height: 60,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 16,
+                }}>
+                  <Ionicons 
+                    name="restaurant" 
+                    size={28} 
+                    color={darkMode ? '#8E8E93' : '#6D6D70'} 
+                  />
+                </View>
+                <Text style={{
+                  fontSize: 18,
+                  fontWeight: '700',
+                  color: darkMode ? '#FFFFFF' : '#1C1C1E',
+                  marginBottom: 8,
+                  textAlign: 'center',
+                }}>
+                  No meals logged yet
+                </Text>
+                <Text style={{
+                  fontSize: 14,
+                  fontWeight: '500',
+                  color: darkMode ? '#8E8E93' : '#6D6D70',
+                  textAlign: 'center',
+                  lineHeight: 20,
+                }}>
+                  Start logging your meals by taking{'\n'}photos or adding text descriptions!
+                </Text>
+              </View>
+            )}
+
+            {/* No Camera Permission State */}
+            {hasCameraPermission === false && (
+              <View style={[cardStyle, {
+                alignItems: 'center',
+                marginTop: 20,
+              }]}>
+                <View style={{
+                  backgroundColor: '#FF9500',
+                  borderRadius: 30,
+                  width: 60,
+                  height: 60,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 20,
+                }}>
+                  <Ionicons name="camera-off" size={28} color="#FFFFFF" />
+                </View>
+                <Text style={{
+                  fontSize: 18,
+                  fontWeight: '700',
+                  color: darkMode ? '#FFFFFF' : '#1C1C1E',
+                  marginBottom: 8,
+                  textAlign: 'center',
+                }}>
+                  Camera Access Disabled
+                </Text>
+                <Text style={{
+                  fontSize: 14,
+                  color: darkMode ? '#8E8E93' : '#6D6D70',
+                  textAlign: 'center',
+                  lineHeight: 20,
+                  marginBottom: 16,
+                }}>
+                  Camera photos are disabled, but you can still{'\n'}log meals using text descriptions!
+                </Text>
+              </View>
+            )}
+          </ScrollView>
+        </Animated.View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
