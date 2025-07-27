@@ -227,6 +227,120 @@ const styles = StyleSheet.create({
     color: 'red',
     marginBottom: 10,
   },
+
+  // Pedometer Styles
+  pedometerCard: {
+    alignItems: 'center',
+    borderRadius: 15,
+    padding: 20,
+    margin: 10,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  pedometerContainer: {
+    alignItems: 'center',
+  },
+  pedometerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 10,
+  },
+  pedometerSteps: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  progressCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  progressCircleDark: {
+    backgroundColor: '#1E2A38', // Dark mode background to contrast track
+  },
+  progressCircleLight: {
+    backgroundColor: '#E0F7FF', // Light mode background to contrast track
+  },
+  progressTrack: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 8,
+    borderColor: darkMode ? '#767577' : '#ccc',
+  },
+  progressFill: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 60,
+    height: 120,
+    borderTopRightRadius: 0,
+    borderBottomRightRadius: 0,
+    overflow: 'hidden',
+  },
+  progressCenter: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  progressText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  goalInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 15,
+  },
+  goalInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 8,
+    width: 100,
+    textAlign: 'center',
+    marginRight: 10,
+  },
+  saveButton: {
+    backgroundColor: '#34C759',
+    padding: 8,
+    borderRadius: 8,
+    marginRight: 10,
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  cancelButton: {
+    backgroundColor: '#FF3B30',
+    padding: 8,
+    borderRadius: 8,
+  },
+  cancelButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  editButton: {
+    marginTop: 15,
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: darkMode ? '#81b0ff' : '#007AFF',
+  },
+  editButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
 });
 
 export default styles;
