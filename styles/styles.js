@@ -262,10 +262,10 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   progressCircleDark: {
-    backgroundColor: '#1E2A38', // Dark mode background to contrast track
+    backgroundColor: '#1E2A38',
   },
   progressCircleLight: {
-    backgroundColor: '#E0F7FF', // Light mode background to contrast track
+    backgroundColor: '#E0F7FF',
   },
   progressTrack: {
     position: 'absolute',
@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 60,
     borderWidth: 8,
-    borderColor: darkMode ? '#767577' : '#ccc',
+    // Removed the dynamic darkMode reference - handle this in component
   },
   progressFill: {
     position: 'absolute',
@@ -320,11 +320,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  cancelButton: {
-    backgroundColor: '#FF3B30',
-    padding: 8,
-    borderRadius: 8,
-  },
   cancelButtonText: {
     color: '#fff',
     fontSize: 14,
@@ -335,7 +330,7 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: darkMode ? '#81b0ff' : '#007AFF',
+    // Removed the dynamic darkMode reference - handle this in component
   },
   editButtonText: {
     fontSize: 16,

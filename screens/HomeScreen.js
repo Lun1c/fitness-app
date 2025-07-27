@@ -1,18 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { SafeAreaView, Text, View, TouchableOpacity, TextInput, Alert, Animated } from 'react-native';
-import { Card } from 'react-native-elements';
+import { SafeAreaView, Text, View, TouchableOpacity, TextInput, Alert, Animated, ScrollView } from 'react-native';
 import { Pedometer } from 'expo-sensors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import styles from '../styles/styles';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function HomeScreen({ darkMode = false }) {
-  console.log('darkMode prop received:', darkMode);
   const [steps, setSteps] = useState(0);
   const [pedometerAvailable, setPedometerAvailable] = useState('checking');
   const [stepGoal, setStepGoal] = useState(10000);
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [newGoal, setNewGoal] = useState('');
   const progressAnim = useState(new Animated.Value(0))[0];
+  const scaleAnim = useState(new Animated.Value(1))[0];
+  const fadeAnim = useState(new Animated.Value(0))[0];
+
+  useEffect(() => {
+    // Fade in animation on mount
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 800,
+      useNativeDriver: true,
+    }).start();
+  }, []);
 
   // Pedometer subscription
   useEffect(() => {
@@ -25,7 +34,6 @@ export default function HomeScreen({ darkMode = false }) {
 
         if (isAvailable) {
           subscription = Pedometer.watchStepCount((result) => {
-            console.log('Pedometer step count:', result.steps); // Debug log
             setSteps(result.steps);
           });
 
@@ -34,7 +42,6 @@ export default function HomeScreen({ darkMode = false }) {
           start.setHours(0, 0, 0, 0);
           const result = await Pedometer.getStepCountAsync(start, end);
           if (result) {
-            console.log('Initial step count:', result.steps); // Debug log
             setSteps(result.steps);
           }
         }
@@ -47,7 +54,6 @@ export default function HomeScreen({ darkMode = false }) {
         const savedGoal = await AsyncStorage.getItem('stepGoal');
         if (savedGoal) {
           const parsedGoal = parseInt(savedGoal) || 10000;
-          console.log('Loaded step goal:', parsedGoal); // Debug log
           setStepGoal(parsedGoal);
         }
       } catch (error) {
@@ -59,158 +65,430 @@ export default function HomeScreen({ darkMode = false }) {
 
     return () => {
       if (subscription) {
-        console.log('Removing pedometer subscription'); // Debug log
         subscription.remove();
       }
     };
   }, []);
 
-  // Animate progress bar
+  // Animate progress bar with bounce effect
   const stepsProgress = Math.min(steps / stepGoal, 1);
   useEffect(() => {
-    console.log('Animating progress to:', stepsProgress * 100); // Debug log
-    Animated.timing(progressAnim, {
+    Animated.spring(progressAnim, {
       toValue: stepsProgress * 100,
-      duration: 500,
+      tension: 100,
+      friction: 8,
       useNativeDriver: false,
     }).start();
+
+    // Celebrate when goal is reached
+    if (stepsProgress >= 1) {
+      Animated.sequence([
+        Animated.timing(scaleAnim, {
+          toValue: 1.1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
   }, [stepsProgress]);
 
-  // Save new step goal
   const saveNewGoal = async () => {
     const newGoalValue = parseInt(newGoal);
     if (isNaN(newGoalValue) || newGoalValue <= 0) {
-      console.log('Invalid step goal input:', newGoal); // Debug log
       Alert.alert('Error', 'Please enter a valid positive number for the step goal');
       return;
     }
     try {
       await AsyncStorage.setItem('stepGoal', newGoal.toString());
-      console.log('Saved new step goal:', newGoalValue); // Debug log
       setStepGoal(newGoalValue);
       setIsEditingGoal(false);
       setNewGoal('');
-      Alert.alert('Success', `Step goal updated to ${newGoalValue} steps`);
+      Alert.alert('Success', `Step goal updated to ${newGoalValue.toLocaleString()} steps! 🎯`);
     } catch (error) {
       console.error('Error saving step goal:', error);
       Alert.alert('Error', 'Failed to save step goal');
     }
   };
 
-  const progressColor = darkMode ? '#81b0ff' : '#007AFF';
-  const trackColor = darkMode ? '#2D3748' : '#E5E7EB';
+  const getMotivationMessage = () => {
+    const percentage = (steps / stepGoal) * 100;
+    if (percentage >= 100) return "🎉 Goal crushed! You're amazing!";
+    if (percentage >= 75) return "🔥 Almost there! Keep pushing!";
+    if (percentage >= 50) return "💪 Halfway there! You've got this!";
+    if (percentage >= 25) return "🚀 Great start! Keep moving!";
+    return "👟 Every step counts! Let's go!";
+  };
+
+  const containerStyle = {
+    flex: 1,
+    backgroundColor: darkMode ? '#0A0A0A' : '#F8F9FA',
+  };
+
+  const cardStyle = {
+    backgroundColor: darkMode ? '#1C1C1E' : '#FFFFFF',
+    borderRadius: 24,
+    margin: 16,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: darkMode ? 0.3 : 0.1,
+    shadowRadius: 20,
+    elevation: 8,
+    borderWidth: darkMode ? 1 : 0,
+    borderColor: darkMode ? '#333' : 'transparent',
+  };
+
+  const progressColor = stepsProgress >= 1 ? '#00D4AA' : (darkMode ? '#007AFF' : '#007AFF');
+  const trackColor = darkMode ? '#2C2C2E' : '#E5E5EA';
 
   return (
-    <SafeAreaView style={[styles.container, darkMode ? styles.containerDark : styles.containerLight]}>
-      <Card containerStyle={[styles.card, styles.pedometerCard, darkMode ? styles.cardDark : styles.cardLight, {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: darkMode ? 0.3 : 0.2,
-        shadowRadius: 6,
-        elevation: 5, // Added for Android shadow
-      }]}>
-        <View style={[styles.pedometerContainer, { paddingVertical: 20 }]}>
-          <Text style={[styles.pedometerTitle, darkMode ? styles.textLight : styles.textDark, {
-            fontSize: 20,
-            fontWeight: '700',
-          }]}>
-            Today's Steps
-          </Text>
-          <Text style={[styles.pedometerSteps, darkMode ? styles.textLight : styles.textDark, {
-            fontSize: 52,
-            marginVertical: 15,
-          }]}>
-            {steps.toLocaleString()}
-          </Text>
-          <View style={[styles.progressBar, darkMode ? styles.progressBarDark : styles.progressBarLight, {
-            height: 12,
-            borderRadius: 6,
-            backgroundColor: trackColor,
-            marginBottom: 15,
-            overflow: 'hidden',
-            borderWidth: 1,
-            borderColor: darkMode ? '#4B5563' : '#D1D5DB', // Subtle border for depth
-          }]}>
-            <Animated.View
-              style={[styles.progress, {
-                width: progressAnim.interpolate({
-                  inputRange: [0, 100],
-                  outputRange: ['0%', '100%'],
-                }),
-                height: '100%',
-                backgroundColor: progressColor,
-                borderRadius: 6,
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.2,
-                shadowRadius: 3,
-                elevation: 3, // Added for Android shadow
-              }]}
-            />
+    <SafeAreaView style={containerStyle}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <Animated.View style={{ opacity: fadeAnim }}>
+          {/* Header */}
+          <View style={{
+            paddingHorizontal: 20,
+            paddingTop: 20,
+            paddingBottom: 10,
+          }}>
+            <Text style={{
+              fontSize: 32,
+              fontWeight: '800',
+              color: darkMode ? '#FFFFFF' : '#1C1C1E',
+              marginBottom: 4,
+            }}>
+              Today's Steps
+            </Text>
+            <Text style={{
+              fontSize: 16,
+              color: darkMode ? '#8E8E93' : '#6D6D70',
+              fontWeight: '500',
+            }}>
+              {new Date().toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                month: 'long', 
+                day: 'numeric' 
+              })}
+            </Text>
           </View>
-          <Text style={[styles.progressText, darkMode ? styles.textLight : styles.textDark, {
-            fontSize: 18,
-            fontWeight: '600',
-            marginBottom: 20,
-          }]}>
-            {Math.round(stepsProgress * 100)}% of {stepGoal.toLocaleString()} steps
-          </Text>
-          {isEditingGoal ? (
-            <View style={[styles.goalInputContainer, { marginTop: 10, flexDirection: 'row', alignItems: 'center' }]}>
-              <TextInput
-                style={[styles.goalInput, darkMode ? styles.inputDark : styles.inputLight, {
-                  width: 120,
-                  paddingVertical: 10,
-                  fontSize: 16,
-                  borderRadius: 8,
-                }]}
-                placeholder="Enter new goal"
-                value={newGoal}
-                onChangeText={(text) => setNewGoal(text.replace(/[^0-9]/g, ''))}
-                keyboardType="numeric"
-                placeholderTextColor={darkMode ? '#888' : '#aaa'}
-              />
-              <TouchableOpacity style={[styles.saveButton, {
-                paddingVertical: 10,
-                paddingHorizontal: 15,
-                borderRadius: 10,
-                marginLeft: 10,
-              }]} onPress={saveNewGoal}>
-                <Text style={[styles.saveButtonText, { fontSize: 16 }]}>Save</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.cancelButton, {
-                  paddingVertical: 10,
-                  paddingHorizontal: 15,
-                  borderRadius: 10,
-                  marginLeft: 10,
-                }]}
-                onPress={() => {
-                  setIsEditingGoal(false);
-                  setNewGoal('');
-                }}
-              >
-                <Text style={[styles.cancelButtonText, { fontSize: 16 }]}>Cancel</Text>
-              </TouchableOpacity>
+
+          {/* Main Steps Card */}
+          <Animated.View style={[cardStyle, { transform: [{ scale: scaleAnim }] }]}>
+            <View style={{ alignItems: 'center' }}>
+              {/* Steps Display */}
+              <View style={{
+                alignItems: 'center',
+                marginBottom: 30,
+              }}>
+                <Text style={{
+                  fontSize: 64,
+                  fontWeight: '900',
+                  color: progressColor,
+                  marginBottom: 8,
+                  letterSpacing: -2,
+                }}>
+                  {steps.toLocaleString()}
+                </Text>
+                <Text style={{
+                  fontSize: 18,
+                  fontWeight: '600',
+                  color: darkMode ? '#8E8E93' : '#6D6D70',
+                }}>
+                  steps
+                </Text>
+              </View>
+
+              {/* Progress Ring */}
+              <View style={{
+                width: 200,
+                height: 200,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 30,
+              }}>
+                <View style={{
+                  position: 'absolute',
+                  width: 200,
+                  height: 200,
+                  borderRadius: 100,
+                  borderWidth: 12,
+                  borderColor: trackColor,
+                }} />
+                <Animated.View style={{
+                  position: 'absolute',
+                  width: 200,
+                  height: 200,
+                  borderRadius: 100,
+                  borderWidth: 12,
+                  borderColor: progressColor,
+                  borderRightColor: 'transparent',
+                  borderBottomColor: 'transparent',
+                  transform: [{
+                    rotate: progressAnim.interpolate({
+                      inputRange: [0, 100],
+                      outputRange: ['0deg', '360deg'],
+                    }),
+                  }],
+                }} />
+                <View style={{
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Text style={{
+                    fontSize: 32,
+                    fontWeight: '800',
+                    color: darkMode ? '#FFFFFF' : '#1C1C1E',
+                    marginBottom: 4,
+                  }}>
+                    {Math.round(stepsProgress * 100)}%
+                  </Text>
+                  <Text style={{
+                    fontSize: 16,
+                    fontWeight: '600',
+                    color: darkMode ? '#8E8E93' : '#6D6D70',
+                  }}>
+                    of goal
+                  </Text>
+                </View>
+              </View>
+
+              {/* Goal Info */}
+              <View style={{
+                backgroundColor: darkMode ? '#2C2C2E' : '#F2F2F7',
+                borderRadius: 16,
+                paddingVertical: 16,
+                paddingHorizontal: 20,
+                marginBottom: 20,
+                alignSelf: 'stretch',
+              }}>
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 8,
+                }}>
+                  <Ionicons 
+                    name="flag" 
+                    size={20} 
+                    color={darkMode ? '#007AFF' : '#007AFF'} 
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text style={{
+                    fontSize: 18,
+                    fontWeight: '700',
+                    color: darkMode ? '#FFFFFF' : '#1C1C1E',
+                  }}>
+                    Goal: {stepGoal.toLocaleString()} steps
+                  </Text>
+                </View>
+                <Text style={{
+                  fontSize: 14,
+                  fontWeight: '600',
+                  color: progressColor,
+                  textAlign: 'center',
+                }}>
+                  {getMotivationMessage()}
+                </Text>
+              </View>
+
+              {/* Edit Goal Section */}
+              {isEditingGoal ? (
+                <View style={{
+                  alignSelf: 'stretch',
+                  backgroundColor: darkMode ? '#2C2C2E' : '#F2F2F7',
+                  borderRadius: 16,
+                  padding: 20,
+                }}>
+                  <Text style={{
+                    fontSize: 18,
+                    fontWeight: '700',
+                    color: darkMode ? '#FFFFFF' : '#1C1C1E',
+                    textAlign: 'center',
+                    marginBottom: 16,
+                  }}>
+                    Set New Goal
+                  </Text>
+                  <TextInput
+                    style={{
+                      backgroundColor: darkMode ? '#1C1C1E' : '#FFFFFF',
+                      borderRadius: 12,
+                      paddingVertical: 16,
+                      paddingHorizontal: 20,
+                      fontSize: 18,
+                      fontWeight: '600',
+                      color: darkMode ? '#FFFFFF' : '#1C1C1E',
+                      textAlign: 'center',
+                      marginBottom: 16,
+                      borderWidth: 2,
+                      borderColor: darkMode ? '#007AFF' : '#007AFF',
+                    }}
+                    placeholder="Enter new goal"
+                    value={newGoal}
+                    onChangeText={(text) => setNewGoal(text.replace(/[^0-9]/g, ''))}
+                    keyboardType="numeric"
+                    placeholderTextColor={darkMode ? '#8E8E93' : '#6D6D70'}
+                  />
+                  <View style={{
+                    flexDirection: 'row',
+                    gap: 12,
+                  }}>
+                    <TouchableOpacity
+                      style={{
+                        flex: 1,
+                        backgroundColor: '#34C759',
+                        borderRadius: 12,
+                        paddingVertical: 16,
+                        alignItems: 'center',
+                      }}
+                      onPress={saveNewGoal}
+                    >
+                      <Text style={{
+                        color: '#FFFFFF',
+                        fontSize: 16,
+                        fontWeight: '700',
+                      }}>
+                        Save Goal
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={{
+                        flex: 1,
+                        backgroundColor: darkMode ? '#48484A' : '#8E8E93',
+                        borderRadius: 12,
+                        paddingVertical: 16,
+                        alignItems: 'center',
+                      }}
+                      onPress={() => {
+                        setIsEditingGoal(false);
+                        setNewGoal('');
+                      }}
+                    >
+                      <Text style={{
+                        color: '#FFFFFF',
+                        fontSize: 16,
+                        fontWeight: '700',
+                      }}>
+                        Cancel
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    borderColor: darkMode ? '#007AFF' : '#007AFF',
+                    borderRadius: 16,
+                    paddingVertical: 16,
+                    paddingHorizontal: 24,
+                    alignSelf: 'stretch',
+                    alignItems: 'center',
+                  }}
+                  onPress={() => setIsEditingGoal(true)}
+                >
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                  }}>
+                    <Ionicons 
+                      name="settings" 
+                      size={20} 
+                      color={darkMode ? '#007AFF' : '#007AFF'} 
+                      style={{ marginRight: 8 }}
+                    />
+                    <Text style={{
+                      fontSize: 16,
+                      fontWeight: '700',
+                      color: darkMode ? '#007AFF' : '#007AFF',
+                    }}>
+                      Change Goal
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              )}
             </View>
-          ) : (
-            <TouchableOpacity style={[styles.editButton, {
-              paddingVertical: 12,
-              borderRadius: 10,
-              borderWidth: 1.5,
-              borderColor: darkMode ? '#81b0ff' : '#007AFF',
-              marginTop: 10,
-            }]} onPress={() => setIsEditingGoal(true)}>
-              <Text style={[styles.editButtonText, darkMode ? styles.textLight : styles.textDark, {
-                fontSize: 16,
-                fontWeight: '600',
-              }]}>
-                Change Goal ({stepGoal.toLocaleString()} steps)
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </Card>
+          </Animated.View>
+
+          {/* Stats Cards */}
+          <View style={{
+            flexDirection: 'row',
+            paddingHorizontal: 16,
+            gap: 12,
+            marginBottom: 20,
+          }}>
+            <View style={[cardStyle, { 
+              flex: 1, 
+              margin: 0,
+              padding: 20,
+            }]}>
+              <View style={{
+                alignItems: 'center',
+              }}>
+                <Ionicons 
+                  name="flame" 
+                  size={24} 
+                  color="#FF6B35" 
+                  style={{ marginBottom: 8 }}
+                />
+                <Text style={{
+                  fontSize: 20,
+                  fontWeight: '800',
+                  color: darkMode ? '#FFFFFF' : '#1C1C1E',
+                  marginBottom: 4,
+                }}>
+                  {Math.round(steps * 0.04)}
+                </Text>
+                <Text style={{
+                  fontSize: 12,
+                  fontWeight: '600',
+                  color: darkMode ? '#8E8E93' : '#6D6D70',
+                  textAlign: 'center',
+                }}>
+                  Calories
+                </Text>
+              </View>
+            </View>
+            <View style={[cardStyle, { 
+              flex: 1, 
+              margin: 0,
+              padding: 20,
+            }]}>
+              <View style={{
+                alignItems: 'center',
+              }}>
+                <Ionicons 
+                  name="walk" 
+                  size={24} 
+                  color="#30D158" 
+                  style={{ marginBottom: 8 }}
+                />
+                <Text style={{
+                  fontSize: 20,
+                  fontWeight: '800',
+                  color: darkMode ? '#FFFFFF' : '#1C1C1E',
+                  marginBottom: 4,
+                }}>
+                  {(steps * 0.0008).toFixed(1)}
+                </Text>
+                <Text style={{
+                  fontSize: 12,
+                  fontWeight: '600',
+                  color: darkMode ? '#8E8E93' : '#6D6D70',
+                  textAlign: 'center',
+                }}>
+                  Miles
+                </Text>
+              </View>
+            </View>
+          </View>
+        </Animated.View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
