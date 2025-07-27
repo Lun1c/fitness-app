@@ -1,4 +1,3 @@
-// screens/WorkoutsScreen.js
 import React, { useState, useEffect } from 'react';
 import {
   SafeAreaView,
@@ -10,134 +9,271 @@ import {
   KeyboardAvoidingView,
   Keyboard,
   Platform,
-  TouchableWithoutFeedback,
+  StyleSheet,
+  Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Header from '../components/Header';
-import styles from '../styles/styles';
 
-export default function WorkoutsScreen({ darkMode }) {
-  const [workoutName, setWorkoutName] = useState('');
-  const [duration, setDuration] = useState('');
-  const [notes, setNotes] = useState('');
+const WorkoutsScreen = () => {
   const [workouts, setWorkouts] = useState([]);
-  const [error, setError] = useState('');
+  const [workoutName, setWorkoutName] = useState('');
+  const [hours, setHours] = useState('0'); // String for TextInput
+  const [minutes, setMinutes] = useState('30'); // String for TextInput, default 30 minutes
 
+  // Load workouts from AsyncStorage on mount
   useEffect(() => {
     const loadWorkouts = async () => {
       try {
-        const saved = await AsyncStorage.getItem('workouts');
-        if (saved) setWorkouts(JSON.parse(saved));
-      } catch (e) {
-        console.error('Failed to load workouts', e);
+        const savedWorkouts = await AsyncStorage.getItem('workouts');
+        if (savedWorkouts) setWorkouts(JSON.parse(savedWorkouts));
+      } catch (error) {
+        console.error('Error loading workouts:', error);
       }
     };
     loadWorkouts();
   }, []);
 
+  // Save workouts to AsyncStorage whenever they change
   useEffect(() => {
     const saveWorkouts = async () => {
       try {
         await AsyncStorage.setItem('workouts', JSON.stringify(workouts));
-      } catch (e) {
-        console.error('Failed to save workouts', e);
+      } catch (error) {
+        console.error('Error saving workouts:', error);
       }
     };
-    saveWorkouts();
+    if (workouts.length > 0) saveWorkouts();
   }, [workouts]);
 
+  const formatDuration = (h, m) => {
+    const hoursNum = parseInt(h) || 0;
+    const minutesNum = parseInt(m) || 0;
+    return `${hoursNum}h ${minutesNum}m`;
+  };
+
+  const validateDuration = (h, m) => {
+    const hoursNum = parseInt(h) || 0;
+    const minutesNum = parseInt(m) || 0;
+    return hoursNum > 0 || minutesNum > 0;
+  };
+
   const handleAddWorkout = () => {
-    if (!workoutName.trim() || !duration.trim()) {
-      setError('Please enter both workout name and duration.');
+    if (workoutName.trim() === '') {
+      Alert.alert('Error', 'Please enter a workout name');
       return;
     }
-
+    if (!validateDuration(hours, minutes)) {
+      Alert.alert('Error', 'Duration must be greater than 0');
+      return;
+    }
     const newWorkout = {
       id: Date.now().toString(),
       name: workoutName,
-      duration,
-      notes,
+      duration: formatDuration(hours, minutes),
     };
-
-    setWorkouts([newWorkout, ...workouts]);
+    setWorkouts([...workouts, newWorkout]);
     setWorkoutName('');
-    setDuration('');
-    setNotes('');
-    setError('');
+    setHours('0');
+    setMinutes('30');
     Keyboard.dismiss();
   };
 
-  const handleClearWorkouts = () => {
-    setWorkouts([]);
-    setError('');
+  const handleDeleteWorkout = (id) => {
+    setWorkouts(workouts.filter((workout) => workout.id !== id));
   };
 
   return (
-    <SafeAreaView style={[styles.container, darkMode ? styles.containerDark : styles.containerLight]}>
-      <Header title="Workouts" darkMode={darkMode} />
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, padding: 20 }}>
-          <Text style={[styles.sectionTitle, darkMode ? styles.textLight : styles.textDark]}>➕ Add New Workout</Text>
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.inner}
+      >
+        <Text style={styles.title} accessibilityLabel="Workout Tracker Title">
+          Workout Tracker
+        </Text>
+
+        <TextInput
+          style={styles.input}
+          placeholder="Workout name"
+          value={workoutName}
+          onChangeText={setWorkoutName}
+          accessibilityLabel="Workout name input"
+          placeholderTextColor="#888"
+        />
+
+        <View style={styles.durationInputContainer}>
           <TextInput
-            style={[styles.input, darkMode ? styles.inputDark : styles.inputLight]}
-            placeholder="Workout Name"
-            placeholderTextColor={darkMode ? '#ccc' : '#aaa'}
-            value={workoutName}
-            onChangeText={setWorkoutName}
-          />
-          <TextInput
-            style={[styles.input, darkMode ? styles.inputDark : styles.inputLight]}
-            placeholder="Duration"
-            placeholderTextColor={darkMode ? '#ccc' : '#aaa'}
-            value={duration}
-            onChangeText={setDuration}
+            style={styles.durationInput}
+            placeholder="Hours"
             keyboardType="numeric"
+            value={hours}
+            onChangeText={(text) => setHours(text.replace(/[^0-9]/g, ''))}
+            accessibilityLabel="Hours input"
+            placeholderTextColor="#888"
           />
+          <Text style={styles.durationInputLabel}>h</Text>
           <TextInput
-            style={[styles.input, { height: 80 }, darkMode ? styles.inputDark : styles.inputLight]}
-            placeholder="Notes (optional)"
-            placeholderTextColor={darkMode ? '#ccc' : '#aaa'}
-            value={notes}
-            onChangeText={setNotes}
-            multiline
+            style={styles.durationInput}
+            placeholder="Minutes"
+            keyboardType="numeric"
+            value={minutes}
+            onChangeText={(text) => setMinutes(text.replace(/[^0-9]/g, ''))}
+            accessibilityLabel="Minutes input"
+            placeholderTextColor="#888"
           />
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          <Text style={styles.durationInputLabel}>m</Text>
+        </View>
 
-          <View style={styles.addButton}>
-            <TouchableOpacity onPress={handleAddWorkout} style={styles.snapButton}>
-              <Text style={styles.snapText}>Add Workout</Text>
-            </TouchableOpacity>
-          </View>
+        <Text style={styles.durationText}>
+          Duration: {formatDuration(hours, minutes)}
+        </Text>
 
-          <Text style={[styles.sectionTitle, darkMode ? styles.textLight : styles.textDark]}>📋 Logged Workouts</Text>
-          {workouts.length === 0 ? (
-            <Text style={[styles.placeholderText, darkMode ? styles.textLight : styles.textDark]}>No workouts logged yet.</Text>
-          ) : (
-            <FlatList
-              data={workouts}
-              keyExtractor={(item) => item.id}
-              contentContainerStyle={{ paddingBottom: 20 }}
-              renderItem={({ item }) => (
-                <View style={[styles.workoutItem, darkMode ? styles.workoutItemDark : styles.workoutItemLight]}>
-                  <Text style={[styles.workoutTitle, darkMode ? styles.textLight : styles.textDark]}>
-                    {item.name} ({item.duration})
-                  </Text>
-                  {item.notes ? (
-                    <Text style={[styles.workoutNotes, darkMode ? styles.textLight : styles.textDark]}>{item.notes}</Text>
-                  ) : null}
-                </View>
-              )}
-            />
-          )}
-          {workouts.length > 0 && (
-            <View style={{ marginTop: 10 }}>
-              <TouchableOpacity onPress={handleClearWorkouts} style={[styles.cancelButton, { alignItems: 'center' }]}>
-                <Text style={styles.snapText}>Clear Workouts</Text>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={handleAddWorkout}
+          accessibilityLabel="Add workout button"
+        >
+          <Text style={styles.addButtonText}>Add Workout</Text>
+        </TouchableOpacity>
+
+        <FlatList
+          data={workouts}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <View style={styles.workoutItem}>
+              <Text style={styles.workoutText}>
+                {item.name} - {item.duration}
+              </Text>
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={() => handleDeleteWorkout(item.id)}
+                accessibilityLabel={`Delete ${item.name} workout`}
+              >
+                <Text style={styles.deleteButtonText}>Delete</Text>
               </TouchableOpacity>
             </View>
           )}
-        </KeyboardAvoidingView>
-      </TouchableWithoutFeedback>
+          initialNumToRender={10}
+        />
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
-}
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  inner: {
+    flex: 1,
+    padding: 20,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    alignSelf: 'center',
+    color: '#333',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 15,
+    backgroundColor: '#fff',
+    fontSize: 16,
+    color: '#333',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  durationInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+    justifyContent: 'center',
+  },
+  durationInput: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 10,
+    width: 80,
+    textAlign: 'center',
+    fontSize: 16,
+    color: '#333',
+    marginRight: 10,
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  durationInputLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginRight: 10,
+  },
+  durationText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 15,
+    alignSelf: 'center',
+  },
+  addButton: {
+    backgroundColor: '#34C759',
+    padding: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  addButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  workoutItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 15,
+    backgroundColor: '#f8f8f8',
+    borderRadius: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  workoutText: {
+    fontSize: 18,
+    color: '#333',
+    fontWeight: '500',
+    flex: 1,
+  },
+  deleteButton: {
+    backgroundColor: '#FF3B30',
+    padding: 8,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+  },
+  deleteButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+});
+
+export default WorkoutsScreen;
