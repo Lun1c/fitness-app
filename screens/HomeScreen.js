@@ -474,7 +474,7 @@ export default function HomeScreen({ darkMode = false }) {
                   color: darkMode ? '#FFFFFF' : '#1C1C1E',
                   marginBottom: 4,
                 }}>
-                  {(steps * 0.0008).toFixed(1)}
+                  {(steps * 0.0013).toFixed(1)}
                 </Text>
                 <Text style={{
                   fontSize: 12,
@@ -482,7 +482,7 @@ export default function HomeScreen({ darkMode = false }) {
                   color: darkMode ? '#8E8E93' : '#6D6D70',
                   textAlign: 'center',
                 }}>
-                  Miles
+                  Kilometers
                 </Text>
               </View>
             </View>
