@@ -3,9 +3,44 @@ import { SafeAreaView, View, Text, Switch, TouchableOpacity, ScrollView, Alert, 
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// Star Rating Component
+const StarRating = ({ rating, onRatingChange, darkMode }) => {
+  return (
+    <View style={{
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 8,
+    }}>
+      {[1, 2, 3, 4, 5].map((star) => (
+        <TouchableOpacity
+          key={star}
+          onPress={() => onRatingChange(star)}
+          style={{ marginHorizontal: 4 }}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name={star <= rating ? 'star' : 'star-outline'}
+            size={32}
+            color={star <= rating ? '#FFD700' : (darkMode ? '#8E8E93' : '#C7C7CC')}
+          />
+        </TouchableOpacity>
+      ))}
+      <Text style={{
+        fontSize: 16,
+        fontWeight: '600',
+        color: darkMode ? '#FFFFFF' : '#1C1C1E',
+        marginLeft: 12,
+      }}>
+        {rating > 0 ? `${rating}/5` : 'Not rated'}
+      </Text>
+    </View>
+  );
+};
+
 export default function SettingsScreen({ darkMode, toggleDarkMode }) {
   const [notifications, setNotifications] = useState(true);
   const [weeklyGoal, setWeeklyGoal] = useState(70000);
+  const [appRating, setAppRating] = useState(0);
   const [fadeAnim] = useState(new Animated.Value(0));
 
   useEffect(() => {
@@ -24,12 +59,16 @@ export default function SettingsScreen({ darkMode, toggleDarkMode }) {
     try {
       const savedNotifications = await AsyncStorage.getItem('notifications');
       const savedWeeklyGoal = await AsyncStorage.getItem('weeklyGoal');
+      const savedAppRating = await AsyncStorage.getItem('appRating');
       
       if (savedNotifications !== null) {
         setNotifications(JSON.parse(savedNotifications));
       }
       if (savedWeeklyGoal !== null) {
         setWeeklyGoal(parseInt(savedWeeklyGoal));
+      }
+      if (savedAppRating !== null) {
+        setAppRating(parseInt(savedAppRating));
       }
     } catch (error) {
       console.error('Error loading settings:', error);
@@ -46,10 +85,38 @@ export default function SettingsScreen({ darkMode, toggleDarkMode }) {
     }
   };
 
+  const handleRatingChange = async (rating) => {
+    setAppRating(rating);
+    try {
+      await AsyncStorage.setItem('appRating', rating.toString());
+      
+      // Show feedback based on rating
+      let message = '';
+      if (rating === 5) {
+        message = 'Thank you for the 5-star rating! ⭐ We\'re thrilled you love the app!';
+      } else if (rating === 4) {
+        message = 'Thanks for the 4-star rating! 🌟 We appreciate your feedback!';
+      } else if (rating === 3) {
+        message = 'Thanks for rating! 💭 We\'d love to know how we can improve.';
+      } else if (rating === 2) {
+        message = 'Thank you for your feedback. 🔧 We\'re working hard to make improvements!';
+      } else if (rating === 1) {
+        message = 'We\'re sorry you\'re not satisfied. 😔 Please help us improve by sharing your concerns!';
+      }
+      
+      if (message) {
+        Alert.alert('Rating Submitted', message);
+      }
+    } catch (error) {
+      console.error('Error saving app rating:', error);
+      Alert.alert('Error', 'Failed to save rating');
+    }
+  };
+
   const handleDataReset = () => {
     Alert.alert(
       'Reset All Data',
-      'This will permanently delete all your workouts, step goals, and settings. This action cannot be undone.',
+      'This will permanently delete all your workouts, step goals, settings, and app rating. This action cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -57,7 +124,8 @@ export default function SettingsScreen({ darkMode, toggleDarkMode }) {
           style: 'destructive',
           onPress: async () => {
             try {
-              await AsyncStorage.multiRemove(['workouts', 'stepGoal', 'notifications', 'weeklyGoal']);
+              await AsyncStorage.multiRemove(['workouts', 'stepGoal', 'notifications', 'weeklyGoal', 'appRating']);
+              setAppRating(0); // Reset the rating in state too
               Alert.alert('Success', 'All data has been reset successfully! 🔄');
             } catch (error) {
               console.error('Error resetting data:', error);
@@ -291,6 +359,86 @@ export default function SettingsScreen({ darkMode, toggleDarkMode }) {
             />
           </View>
 
+          {/* App Rating Section */}
+          <View style={cardStyle}>
+            <View style={{
+              paddingVertical: 8,
+              paddingHorizontal: 20,
+              borderBottomWidth: 1,
+              borderBottomColor: darkMode ? '#2C2C2E' : '#F2F2F7',
+            }}>
+              <Text style={{
+                fontSize: 18,
+                fontWeight: '700',
+                color: darkMode ? '#FFFFFF' : '#1C1C1E',
+                paddingVertical: 8,
+              }}>
+                Your Feedback
+              </Text>
+            </View>
+            <View style={{
+              paddingVertical: 16,
+              paddingHorizontal: 20,
+            }}>
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                marginBottom: 12,
+              }}>
+                <View style={{
+                  backgroundColor: '#FF6B35',
+                  borderRadius: 12,
+                  width: 40,
+                  height: 40,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 16,
+                }}>
+                  <Ionicons name="star" size={20} color="#FFFFFF" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{
+                    fontSize: 16,
+                    fontWeight: '600',
+                    color: darkMode ? '#FFFFFF' : '#1C1C1E',
+                    marginBottom: 2,
+                  }}>
+                    Rate This App
+                  </Text>
+                  <Text style={{
+                    fontSize: 14,
+                    fontWeight: '500',
+                    color: darkMode ? '#8E8E93' : '#6D6D70',
+                  }}>
+                    How would you rate your experience?
+                  </Text>
+                </View>
+              </View>
+              <StarRating 
+                rating={appRating} 
+                onRatingChange={handleRatingChange}
+                darkMode={darkMode}
+              />
+              {appRating > 0 && (
+                <View style={{
+                  backgroundColor: darkMode ? '#2C2C2E' : '#F2F2F7',
+                  borderRadius: 12,
+                  padding: 12,
+                  marginTop: 12,
+                }}>
+                  <Text style={{
+                    fontSize: 14,
+                    fontWeight: '500',
+                    color: darkMode ? '#8E8E93' : '#6D6D70',
+                    textAlign: 'center',
+                  }}>
+                    Thank you for rating our app! Your feedback helps us improve.
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+
           {/* Data & Privacy Section */}
           <View style={cardStyle}>
             <View style={{
@@ -349,7 +497,7 @@ export default function SettingsScreen({ darkMode, toggleDarkMode }) {
             <SettingItem
               icon="trash"
               title="Reset All Data"
-              subtitle="Delete all workouts and settings"
+              subtitle="Delete all workouts, settings, and rating"
               color="#FF3B30"
               onPress={handleDataReset}
             />
@@ -386,25 +534,6 @@ export default function SettingsScreen({ darkMode, toggleDarkMode }) {
               }
               onPress={handleAbout}
             />
-            <SettingItem
-              icon="star"
-              title="Rate This App"
-              subtitle="Help us improve with your feedback"
-              color="#FF6B35"
-              rightComponent={
-                <Ionicons 
-                  name="chevron-forward" 
-                  size={20} 
-                  color={darkMode ? '#8E8E93' : '#C7C7CC'} 
-                />
-              }
-              onPress={() => {
-                Alert.alert(
-                  'Thank You! ⭐',
-                  'We appreciate your support! App Store rating will be available when published.'
-                );
-              }}
-            />
           </View>
 
           {/* Footer */}
@@ -420,8 +549,7 @@ export default function SettingsScreen({ darkMode, toggleDarkMode }) {
               textAlign: 'center',
               lineHeight: 20,
             }}>
-              Made with ❤️ for your fitness journey{'\n'}
-              Stay healthy, stay active! 🏃‍♀️💪
+              💪🫀 Stronger Every Step 🫀💪{'\n'}
             </Text>
           </View>
         </ScrollView>
